@@ -1,0 +1,53 @@
+{
+  "manifest_version": 1,
+  "type": "device",
+  "name": "SmartThings",
+  "description": {
+    "en": "Control your Samsung SmartThings switches, lights, locks, shades and sensors from Gladys.",
+    "fr": "Pilotez vos interrupteurs, lumières, serrures, volets et capteurs Samsung SmartThings depuis Gladys."
+  },
+  "version": "1.0.0",
+  "docker_image": "ghcr.io/callemand/gladys-smartthings:1.0.0",
+  "gladys_version": ">=4.62.0",
+  "cover_image": "https://raw.githubusercontent.com/callemand/gladys-smartthings/main/cover.png",
+  "config_schema": [
+    {
+      "key": "how_to_token",
+      "type": "section",
+      "label": {
+        "en": "Get your Personal Access Token",
+        "fr": "Obtenir votre Personal Access Token"
+      },
+      "description": {
+        "en": "Open the SmartThings token page below and sign in, then click \"Generate new token\". Give it a name, tick the scopes Devices (list all, see all, control all) and Locations (see all), and generate it. Copy the token (it is shown only once) and paste it in the field below. Note: newly created tokens expire after 24 hours.",
+        "fr": "Ouvrez la page des tokens SmartThings ci-dessous et connectez-vous, puis cliquez sur « Generate new token ». Donnez-lui un nom, cochez les autorisations Devices (list all, see all, control all) et Locations (see all), et générez-le. Copiez le token (affiché une seule fois) et collez-le dans le champ ci-dessous. Note : les nouveaux tokens expirent au bout de 24 heures."
+      },
+      "links": [
+        {
+          "url": "https://account.smartthings.com/tokens",
+          "label": {
+            "en": "Create a token on SmartThings",
+            "fr": "Créer un token sur SmartThings"
+          }
+        }
+      ]
+    },
+    {
+      "key": "token",
+      "type": "secret",
+      "label": {
+        "en": "SmartThings Personal Access Token",
+        "fr": "Personal Access Token SmartThings"
+      },
+      "description": {
+        "en": "Generate a token at https://account.smartthings.com/tokens with the Devices (list, see, control) and Locations (see) scopes. New tokens expire after 24 hours.",
+        "fr": "Générez un token sur https://account.smartthings.com/tokens avec les autorisations Devices (lister, voir, contrôler) et Locations (voir). Les nouveaux tokens expirent après 24 heures."
+      },
+      "placeholder": {
+        "en": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "fr": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+      },
+      "required": true
+    }
+  ]
+}
