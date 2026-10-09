@@ -10,6 +10,7 @@
   "docker_image": "ghcr.io/callemand/gladys-smartthings:1.0.0",
   "gladys_version": ">=4.62.0",
   "cover_image": "https://raw.githubusercontent.com/callemand/gladys-smartthings/main/cover.png",
+  "transports": ["cloud"],
   "config_schema": [
     {
       "key": "how_to_token",
