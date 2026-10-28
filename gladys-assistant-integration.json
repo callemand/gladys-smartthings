@@ -13,15 +13,78 @@
   "transports": ["cloud"],
   "config_schema": [
     {
+      "key": "how_to_oauth",
+      "type": "section",
+      "label": {
+        "en": "Connect your SmartThings account (OAuth2, recommended)",
+        "fr": "Connecter votre compte SmartThings (OAuth2, recommandé)"
+      },
+      "description": {
+        "en": "Once, with the SmartThings CLI: run \"smartthings apps:create\", choose \"OAuth-In App\", enter https://my.gladysassistant.com/redirect/oauth as the redirect URI and select the scopes r:devices:*, x:devices:* and r:locations:*. If you tick \"Use the address of my instance instead\" under the Connect button, declare the address Gladys shows there instead. Copy the client id and the client secret it prints (shown only once) into the fields below, save, then click \"Connect\". The connection is then renewed automatically: no token to paste every day.",
+        "fr": "Une seule fois, avec la CLI SmartThings : lancez « smartthings apps:create », choisissez « OAuth-In App », indiquez https://my.gladysassistant.com/redirect/oauth comme redirect URI et sélectionnez les autorisations r:devices:*, x:devices:* et r:locations:*. Si vous cochez « Utiliser plutôt l'adresse de mon instance » sous le bouton Connecter, déclarez plutôt l'adresse affichée par Gladys. Copiez le client id et le client secret affichés (une seule fois) dans les champs ci-dessous, enregistrez, puis cliquez sur « Connecter ». La connexion se renouvelle ensuite toute seule : plus de token à recoller chaque jour."
+      },
+      "links": [
+        {
+          "url": "https://developer.smartthings.com/docs/sdks/cli/",
+          "label": {
+            "en": "Install the SmartThings CLI",
+            "fr": "Installer la CLI SmartThings"
+          }
+        }
+      ]
+    },
+    {
+      "key": "client_id",
+      "type": "string",
+      "label": {
+        "en": "Client id",
+        "fr": "Client id"
+      },
+      "description": {
+        "en": "Client id of your SmartThings OAuth-In app.",
+        "fr": "Client id de votre application OAuth-In SmartThings."
+      },
+      "placeholder": {
+        "en": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+        "fr": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+      },
+      "required": false
+    },
+    {
+      "key": "client_secret",
+      "type": "secret",
+      "label": {
+        "en": "Client secret",
+        "fr": "Client secret"
+      },
+      "description": {
+        "en": "Client secret of your SmartThings OAuth-In app.",
+        "fr": "Client secret de votre application OAuth-In SmartThings."
+      },
+      "required": false
+    },
+    {
+      "key": "account",
+      "type": "oauth2",
+      "label": {
+        "en": "SmartThings account",
+        "fr": "Compte SmartThings"
+      },
+      "description": {
+        "en": "Save the client id and secret first, then connect.",
+        "fr": "Enregistrez d'abord le client id et le secret, puis connectez-vous."
+      }
+    },
+    {
       "key": "how_to_token",
       "type": "section",
       "label": {
-        "en": "Get your Personal Access Token",
-        "fr": "Obtenir votre Personal Access Token"
+        "en": "Alternative: Personal Access Token",
+        "fr": "Alternative : Personal Access Token"
       },
       "description": {
-        "en": "Open the SmartThings token page below and sign in, then click \"Generate new token\". Give it a name, tick the scopes Devices (list all, see all, control all) and Locations (see all), and generate it. Copy the token (it is shown only once) and paste it in the field below. Note: newly created tokens expire after 24 hours.",
-        "fr": "Ouvrez la page des tokens SmartThings ci-dessous et connectez-vous, puis cliquez sur « Generate new token ». Donnez-lui un nom, cochez les autorisations Devices (list all, see all, control all) et Locations (see all), et générez-le. Copiez le token (affiché une seule fois) et collez-le dans le champ ci-dessous. Note : les nouveaux tokens expirent au bout de 24 heures."
+        "en": "Only if you do not use OAuth2 above. Open the SmartThings token page below and sign in, then click \"Generate new token\". Give it a name, tick the scopes Devices (list all, see all, control all) and Locations (see all), and generate it. Copy the token (it is shown only once) and paste it in the field below. Warning: newly created tokens expire after 24 hours, and the integration stops working until you paste a new one.",
+        "fr": "Uniquement si vous n'utilisez pas OAuth2 ci-dessus. Ouvrez la page des tokens SmartThings ci-dessous et connectez-vous, puis cliquez sur « Generate new token ». Donnez-lui un nom, cochez les autorisations Devices (list all, see all, control all) et Locations (see all), et générez-le. Copiez le token (affiché une seule fois) et collez-le dans le champ ci-dessous. Attention : les nouveaux tokens expirent au bout de 24 heures, et l'intégration s'arrête jusqu'à ce que vous en colliez un nouveau."
       },
       "links": [
         {
@@ -41,14 +104,14 @@
         "fr": "Personal Access Token SmartThings"
       },
       "description": {
-        "en": "Generate a token at https://account.smartthings.com/tokens with the Devices (list, see, control) and Locations (see) scopes. New tokens expire after 24 hours.",
-        "fr": "Générez un token sur https://account.smartthings.com/tokens avec les autorisations Devices (lister, voir, contrôler) et Locations (voir). Les nouveaux tokens expirent après 24 heures."
+        "en": "Ignored once a SmartThings account is connected with OAuth2. New tokens expire after 24 hours.",
+        "fr": "Ignoré dès qu'un compte SmartThings est connecté en OAuth2. Les nouveaux tokens expirent après 24 heures."
       },
       "placeholder": {
         "en": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
         "fr": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
       },
-      "required": true
+      "required": false
     }
   ]
 }

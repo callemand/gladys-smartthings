@@ -13,6 +13,23 @@ export const SMARTTHINGS_ENDPOINT = (
   process.env.SMARTTHINGS_ENDPOINT || 'https://api.smartthings.com/v1'
 ).replace(/\/+$/, '');
 
+// OAuth2 (SmartThings "API Access" app created with the SmartThings CLI).
+// The authorization page is served at the root of the API host: the documented
+// /v1/oauth/authorize goes through the Samsung sign-in, then fails with
+// "Resource representation is only available with these types: text/html"
+// (seen on a real account). The token endpoint works under /v1.
+export const OAUTH_AUTHORIZE_URL = `${SMARTTHINGS_ENDPOINT.replace(/\/v1$/, '')}/oauth/authorize`;
+export const OAUTH_TOKEN_URL = `${SMARTTHINGS_ENDPOINT}/oauth/token`;
+// Read and control the devices, read the locations (same rights as the PAT).
+export const OAUTH_SCOPES = ['r:devices:*', 'x:devices:*', 'r:locations:*'];
+// SmartThings access tokens live ~24 h. Refresh when less than this margin is
+// left, and check at this interval even when no device is polled: a refresh
+// token unused for 29 days is dead, and the user would have to reconnect.
+export const OAUTH_REFRESH_MARGIN_MS = 6 * 60 * 60 * 1000;
+export const OAUTH_REFRESH_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+// An authorization started with "Connect" must come back within this delay.
+export const OAUTH_STATE_TTL_MS = 15 * 60 * 1000;
+
 // SmartThings devices are organized in components; almost every capability of
 // a consumer device lives on the "main" component. This integration maps the
 // main component (see the docs for the multi-component note).

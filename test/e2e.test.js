@@ -1,7 +1,7 @@
 // End-to-end test: boots the REAL integration process (index.js) against a
 // fake Gladys host (WebSocket + REST, same contract as the SDK) and a fake
 // SmartThings API, then exercises the full flows: initial discovery, scan
-// request, poll and set-value commands.
+// request, poll and set-value commands, and the OAuth2 "Connect" flow.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -41,13 +41,28 @@ function startFakeSmartThings() {
     });
     req.on('end', () => {
       const url = new URL(req.url, 'http://localhost');
+      const form = req.headers['content-type'] === 'application/x-www-form-urlencoded';
       requests.push({
         method: req.method,
         path: url.pathname,
-        body: body ? JSON.parse(body) : null,
+        auth: req.headers.authorization,
+        body: !body
+          ? null
+          : form
+            ? Object.fromEntries(new URLSearchParams(body))
+            : JSON.parse(body),
       });
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      if (url.pathname === '/devices') {
+      if (url.pathname === '/oauth/token') {
+        res.end(
+          JSON.stringify({
+            access_token: 'oauth-access',
+            refresh_token: 'oauth-refresh',
+            token_type: 'bearer',
+            expires_in: 86399,
+          }),
+        );
+      } else if (url.pathname === '/devices') {
         res.end(JSON.stringify(DEVICES_RESPONSE));
       } else if (statuses[url.pathname]) {
         res.end(JSON.stringify(statuses[url.pathname]));
@@ -64,8 +79,9 @@ function startFakeSmartThings() {
 }
 
 // --- Fake Gladys host (REST + WebSocket) -------------------------------------
-function startFakeGladys() {
+function startFakeGladys(initialConfig = { token: 'pat-123' }) {
   const state = {
+    config: { ...initialConfig },
     discoveredDevicePosts: [],
     statePosts: [],
     commandResults: [],
@@ -85,7 +101,10 @@ function startFakeGladys() {
       if (req.method === 'GET' && req.url === '/api/integration/v1/device') {
         respond([]);
       } else if (req.method === 'GET' && req.url === '/api/integration/v1/config') {
-        respond({ config: { token: 'pat-123' } });
+        respond({ config: state.config });
+      } else if (req.method === 'POST' && req.url === '/api/integration/v1/config') {
+        Object.assign(state.config, JSON.parse(body).config);
+        respond({ success: true });
       } else if (req.method === 'POST' && req.url === '/api/integration/v1/discovered_device') {
         const parsed = JSON.parse(body);
         state.discoveredDevicePosts.push(parsed.devices);
@@ -285,5 +304,122 @@ test('the integration discovers, polls and controls SmartThings devices', async 
     const ack = gladys.state.commandResults.find((r) => r.message_id === 'set-ro');
     assert.equal(ack.success, false);
     assert.match(ack.error, /not controllable/);
+  });
+});
+
+test('the OAuth2 "Connect" flow stores the tokens and loads the devices', async (t) => {
+  const smartthings = await startFakeSmartThings();
+  const gladys = await startFakeGladys({ client_id: 'my-client', client_secret: 'my-secret' });
+  t.after(() => {
+    smartthings.server.close();
+    gladys.server.close();
+  });
+
+  let output = '';
+  const child = spawn(process.execPath, ['index.js'], {
+    cwd: ROOT,
+    env: {
+      ...process.env,
+      GLADYS_HOST_API_URL: `http://127.0.0.1:${gladys.port}`,
+      GLADYS_INTEGRATION_TOKEN: TOKEN,
+      GLADYS_INTEGRATION_SELECTOR: SELECTOR,
+      SMARTTHINGS_ENDPOINT: `http://127.0.0.1:${smartthings.port}`,
+      LOG_LEVEL: 'debug',
+    },
+  });
+  child.stdout.on('data', (d) => {
+    output += d;
+  });
+  child.stderr.on('data', (d) => {
+    output += d;
+  });
+  t.after(() => child.kill('SIGKILL'));
+
+  const send = (type, payload) => gladys.state.ws.send(JSON.stringify({ type, payload }));
+  const ackOf = async (messageId) => {
+    await waitUntil(
+      () => gladys.state.commandResults.some((r) => r.message_id === messageId),
+      `ack ${messageId}\n${output}`,
+    );
+    return gladys.state.commandResults.find((r) => r.message_id === messageId);
+  };
+  const redirectUri = 'https://my.gladysassistant.com/redirect/oauth';
+
+  await waitUntil(() => output.includes('not configured yet'), `startup\n${output}`);
+  assert.equal(gladys.state.discoveredDevicePosts.length, 0, 'nothing published before connecting');
+
+  send('external-integration.oauth.get-authorize-url', {
+    message_id: 'authorize',
+    key: 'account',
+    redirect_uri: redirectUri,
+  });
+  const authorize = await ackOf('authorize');
+  assert.equal(authorize.success, true, authorize.error);
+  const url = new URL(authorize.data.authorize_url);
+  assert.equal(url.pathname, '/oauth/authorize');
+  assert.equal(url.searchParams.get('client_id'), 'my-client');
+  assert.equal(url.searchParams.get('redirect_uri'), redirectUri);
+  const state = url.searchParams.get('state');
+
+  await t.test('a callback with an unknown state is refused', async () => {
+    send('external-integration.oauth.callback', {
+      message_id: 'forged',
+      key: 'account',
+      code: 'code',
+      state: 'forged-state',
+      redirect_uri: redirectUri,
+    });
+    const ack = await ackOf('forged');
+    assert.equal(ack.success, false);
+    assert.match(ack.error, /click "Connect" again/);
+    assert.equal(
+      smartthings.requests.filter((r) => r.path === '/oauth/token').length,
+      0,
+      'no code exchange for a forged state',
+    );
+  });
+
+  await t.test('the callback exchanges the code, stores the tokens and publishes', async () => {
+    send('external-integration.oauth.callback', {
+      message_id: 'callback',
+      key: 'account',
+      code: 'the-code',
+      state,
+      redirect_uri: redirectUri,
+    });
+    const ack = await ackOf('callback');
+    assert.equal(ack.success, true, ack.error);
+
+    const exchange = smartthings.requests.find((r) => r.path === '/oauth/token');
+    assert.equal(exchange.auth, `Basic ${Buffer.from('my-client:my-secret').toString('base64')}`);
+    assert.deepEqual(exchange.body, {
+      grant_type: 'authorization_code',
+      code: 'the-code',
+      redirect_uri: redirectUri,
+      client_id: 'my-client',
+    });
+
+    assert.equal(gladys.state.config.oauth_access_token, 'oauth-access');
+    assert.equal(gladys.state.config.oauth_refresh_token, 'oauth-refresh');
+    assert.equal(gladys.state.config.oauth_client_id, 'my-client');
+    assert.ok(gladys.state.config.oauth_expires_at > Date.now());
+
+    assert.equal(gladys.state.discoveredDevicePosts.at(-1).length, 3);
+    assert.equal(
+      smartthings.requests.findLast((r) => r.path === '/devices').auth,
+      'Bearer oauth-access',
+    );
+    assert.equal(gladys.state.connectionStatuses.at(-1).connected, true);
+  });
+
+  await t.test('the same state cannot be used twice', async () => {
+    send('external-integration.oauth.callback', {
+      message_id: 'replay',
+      key: 'account',
+      code: 'the-code',
+      state,
+      redirect_uri: redirectUri,
+    });
+    assert.equal((await ackOf('replay')).success, false);
   });
 });

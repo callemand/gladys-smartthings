@@ -6,8 +6,9 @@ motorized shades, thermostats and sensors from Gladys.
 
 It runs as a standalone Docker container and talks to Gladys through the
 [`@gladysassistant/integration-sdk`](https://www.npmjs.com/package/@gladysassistant/integration-sdk),
-and to Samsung through the [SmartThings Cloud API](https://developer.smartthings.com/docs/api/public)
-using a **Personal Access Token**.
+and to Samsung through the [SmartThings Cloud API](https://developer.smartthings.com/docs/api/public),
+authenticated with **OAuth2** (tokens refreshed automatically) or a **Personal
+Access Token**.
 
 ## Supported capabilities
 
@@ -48,11 +49,19 @@ The capability mapping and API usage were verified against:
 
 ## Configuration
 
-The integration needs a single secret: a SmartThings **Personal Access Token**
-generated at <https://account.smartthings.com/tokens> with the _Devices_ (list,
-see, control) and _Locations_ (see) scopes.
+Two ways to authenticate:
 
-> ⚠️ New SmartThings PATs expire after 24 hours (policy change of late 2024).
+- **OAuth2 (recommended)** — create a SmartThings _OAuth-In_ app once with the
+  [SmartThings CLI](https://developer.smartthings.com/docs/sdks/cli/)
+  (`smartthings apps:create`, scopes `r:devices:*`, `x:devices:*`,
+  `r:locations:*`, redirect URI `https://my.gladysassistant.com/redirect/oauth`),
+  fill in its client id / secret, then click **Connect**. The access token
+  (~24 h) is refreshed before it expires; SmartThings rotates the refresh token
+  on every refresh, so the new pair is stored (outside the config schema, never
+  shown in the UI) before being used.
+- **Personal Access Token** — generated at <https://account.smartthings.com/tokens>
+  with the _Devices_ (list, see, control) and _Locations_ (see) scopes.
+  ⚠️ New SmartThings PATs expire after 24 hours (policy change of late 2024).
 
 See [`docs/en.md`](docs/en.md) / [`docs/fr.md`](docs/fr.md) for the full user
 documentation.
@@ -68,7 +77,7 @@ npm run format
 
 The end-to-end test (`test/e2e.test.js`) boots the real `index.js` against a
 fake Gladys host (WebSocket + REST) and a fake SmartThings API, exercising
-discovery, poll and set-value.
+discovery, poll, set-value and the OAuth2 "Connect" flow.
 
 ## License
 
